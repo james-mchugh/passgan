@@ -10,9 +10,10 @@
 import string
 import math
 import functools
+import typing
 
 # Third party imports
-import typing
+import torch.nn
 import numpy as np
 
 # ----------------------------------------------------------------------
@@ -116,6 +117,19 @@ def is_printable(input_str: str) -> bool:
 
     """
     return not set(input_str) - _get_printable()
+
+
+def init_weights(module: torch.nn.Module):
+    """Initialize weights for the module.
+
+    Parameters
+    ----------
+    module : torch.nn.Module
+        Module to initialize weights for.
+
+    """
+    if module.__class__.__name__.startswith("Conv"):
+        module.weight.data_normal_(0, 0.02)
 
 
 @functools.lru_cache(1)
