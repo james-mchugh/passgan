@@ -38,7 +38,8 @@ class PasswordDataset(Dataset):
     def __getitem__(self, item: int) -> np.array:
         password = self.data[item].strip().split(':')[1]
         str_matrix = utils.vectorize_string(password, 32)
-        return np.reshape(str_matrix, (1, *str_matrix.shape))
+        str_matrix = np.reshape(str_matrix, (1, *str_matrix.shape))
+        return {"data": str_matrix, "label": 'a' in password}
 
     def __len__(self):
         return len(self.data)

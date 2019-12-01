@@ -55,7 +55,7 @@ def vectorize_string(input_str: str,
     embedding_shape = _get_embedding_shape()
     string_matrix = np.zeros((embedding_shape[0], num_chars),
                              dtype=np.float32)
-    for i, char in enumerate(input_str):
+    for i, char in enumerate(input_str[:num_chars]):
         string_matrix[:, i] = _embed_char(char)
 
     return string_matrix
@@ -73,13 +73,16 @@ def _get_embedding_shape() -> typing.Tuple[int, int]:
     return embedding_size, 1
 
 
-def unvectorize_string(string_matrix: np.array) -> str:
+def unvectorize_string(string_matrix: np.array, strip_nulls: bool = False) -> str:
     """Convert embedded string matrix back to string.
 
     Parameters
     ----------
     string_matrix : np.array
         Matrix of embedded vectors as columns to convert to string.
+    strip_nulls : optional, bool
+        If True, strip nulls from the end of the string (the default is
+        False).
 
     Returns
     -------
@@ -91,12 +94,16 @@ def unvectorize_string(string_matrix: np.array) -> str:
     for i in range(string_matrix.shape[1]):
         char_list.append(_unembed_char(string_matrix[:, i]))
 
-    return "".join(char_list)
+    out = "".join(char_list)
+    if strip_nulls:
+        out = out.strip('\x00')
+
+    return out
 
 
 def _unembed_char(vector: np.array) -> str:
     ord_val = 0
-    for i, val in enumerate(vector):
+    for i, val in enumerate(reversed(vector)):
         ord_val += int(val * pow(2, i))
 
     return chr(ord_val)
@@ -129,7 +136,7 @@ def init_weights(module: torch.nn.Module):
 
     """
     if module.__class__.__name__.startswith("Conv"):
-        module.weight.data_normal_(0, 0.02)
+        module.weight.data.normal_(0, 0.02)
 
 
 @functools.lru_cache(1)

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Main script for running PassGan
 
 """
@@ -9,11 +10,14 @@
 # System level imports
 import argparse
 import random
+import sys
 
 # Third party imports
 import torch
+from torch.utils.data import DataLoader
 
 # Local application imports
+from passgan.datasets.linkedin import PasswordDataset
 from passgan.models.discriminator import Discriminator
 from passgan import utils
 
@@ -28,10 +32,12 @@ from passgan import utils
 
 def main():
     parser = argparse.ArgumentParser(description="Train PassGan model.")
-    parser.add_argument("--batch_size", "b", type=int, default=32,
+    parser.add_argument("--batch_size", "-b", type=int, default=32,
                         help="Number of samples per batch.")
-    parser.add_argument("--epochs", "e", type=int, default=2000,
+    parser.add_argument("--epochs", "-e", type=int, default=2000,
                         help="Number of training epochs.")
+    parser.add_argument("--lr", "-r", type=float, default=0.01,
+                        help="Learning rate for training.")
     parser.add_argument("--workers", type=int, default=0,
                         help="Number of dataloader workers to use.")
     parser.add_argument("--ngpu", type=int, default=0,
@@ -44,11 +50,32 @@ def main():
     seed = args.seed if args.seed else random.randint(1, 200000)
     torch.manual_seed = seed
 
+    dataloader = DataLoader(PasswordDataset(), batch_size=args.batch_size,
+                            num_workers=args.workers, shuffle=True)
+
     device = torch.device("cuda:0") if args.ngpu > 0 else "cpu"
 
     dnet = Discriminator(args.ngpu).to(device)
-    dnet.zero_grad()
     dnet.apply(utils.init_weights)
+    optimizer = torch.optim.Adam(dnet.parameters(), lr=args.lr)
+
+    scorer = torch.nn.MSELoss()
+
+    num_samples = len(dataloader)
+
+    for n in range(args.epochs):
+        for i, data in enumerate(dataloader):
+            input_ = data["data"].to(device)
+            labels = data["label"].to(device, dtype=torch.float).reshape(32, 1, 1, 1)
+            output = dnet(input_)
+            dnet_error = scorer(output, labels)
+            dnet_error.backward()
+            optimizer.step()
+            _perc_done = (100*i*args.batch_size)//num_samples
+            sys.stdout.write(f"Epoch {n:05d}: [{'='*_perc_done}{' '*(100-_perc_done)}] {_perc_done:03d}% \r")
+            sys.stdout.flush()
+
+        print(f"Epoch {n:05d}: Discriminator MSE = {dnet_error}")
 
 
 
