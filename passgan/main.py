@@ -67,16 +67,18 @@ def main():
         for i, data in enumerate(dataloader, 1):
             input_ = data["data"].to(device)
             labels = data["label"].to(device, dtype=torch.float)
-            labels = labels.reshape(args.batch_size, 1, 1, 1)
+            batch_size = labels.size(0)
+            labels = labels.reshape(batch_size, 1, 1, 1)
             output = dnet(input_)
             dnet_error = scorer(output, labels)
             dnet_error.backward()
             optimizer.step()
             perc_done = (100*i)//num_batches
             status_bar = '='*perc_done + ' '*(100-perc_done)
-            sys.stdout.write(f"Epoch {n:05d}: [{status_bar}]"
+            sys.stdout.write(f"Epoch {n:05d} Batch {i:05d}: [{status_bar}]"
                              f"{perc_done:02d}% \r")
             sys.stdout.flush()
+            
 
 
 
