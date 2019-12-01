@@ -78,10 +78,8 @@ def main():
             sys.stdout.write(f"Epoch {n:05d} Batch {i:05d}: [{status_bar}]"
                              f"{perc_done:02d}% \r")
             sys.stdout.flush()
-            
 
-
-
+        print(f"\nEpoch {n:05d}: Discriminator MSE = {dnet_error}")
 
 
 if __name__ == '__main__':
