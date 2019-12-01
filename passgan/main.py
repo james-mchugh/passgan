@@ -48,7 +48,7 @@ def main():
     args = parser.parse_args()
 
     seed = args.seed if args.seed else random.randint(1, 200000)
-    torch.manual_seed = seed
+    torch.manual_seed(seed)
 
     dataloader = DataLoader(PasswordDataset(), batch_size=args.batch_size,
                             num_workers=args.workers, shuffle=True)
@@ -61,21 +61,23 @@ def main():
 
     scorer = torch.nn.MSELoss()
 
-    num_samples = len(dataloader)
+    num_batches = len(dataloader)
 
     for n in range(args.epochs):
-        for i, data in enumerate(dataloader):
+        for i, data in enumerate(dataloader, 1):
             input_ = data["data"].to(device)
-            labels = data["label"].to(device, dtype=torch.float).reshape(32, 1, 1, 1)
+            labels = data["label"].to(device, dtype=torch.float)
+            labels = labels.reshape(args.batch_size, 1, 1, 1)
             output = dnet(input_)
             dnet_error = scorer(output, labels)
             dnet_error.backward()
             optimizer.step()
-            _perc_done = (100*i*args.batch_size)//num_samples
-            sys.stdout.write(f"Epoch {n:05d}: [{'='*_perc_done}{' '*(100-_perc_done)}] {_perc_done:03d}% \r")
+            perc_done = (100*i)//num_batches
+            status_bar = '='*perc_done + ' '*(100-perc_done)
+            sys.stdout.write(f"Epoch {n:05d}: [{status_bar}]"
+                             f"{perc_done:02d}% \r")
             sys.stdout.flush()
 
-        print(f"Epoch {n:05d}: Discriminator MSE = {dnet_error}")
 
 
 
