@@ -91,6 +91,5 @@ def main():
         logger.info(f"\nEpoch {n:05d}: Discriminator {loss_function.__class__.__name__} = {dnet_error}")
 
 
-
 if __name__ == '__main__':
     main()
