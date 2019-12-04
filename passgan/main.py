@@ -15,7 +15,7 @@ import logging
 
 # Third party imports
 import torch
-import sklearn
+import sklearn.metrics
 from torch.utils.data import DataLoader
 
 # Local application imports
