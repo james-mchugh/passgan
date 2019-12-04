@@ -11,6 +11,7 @@
 import argparse
 import random
 import sys
+import logging
 
 # Third party imports
 import torch
@@ -21,17 +22,13 @@ from passgan.datasets.linkedin import PasswordDataset
 from passgan.models.discriminator import Discriminator
 from passgan import utils
 
-# ----------------------------------------------------------------------
-# globals
-# ----------------------------------------------------------------------
-
 
 # ----------------------------------------------------------------------
 # main
 # ----------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Train PassGan model.")
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--batch_size", "-b", type=int, default=32,
                         help="Number of samples per batch.")
     parser.add_argument("--epochs", "-e", type=int, default=2000,
@@ -47,40 +44,51 @@ def main():
                         help="Random seed for reproducible experiments.")
     args = parser.parse_args()
 
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler(stream=sys.stdout)
+    handler.setLevel(logging.INFO)
+    logger.addHandler(handler)
+
     seed = args.seed if args.seed else random.randint(1, 200000)
+    logger.info(f"Setting manual seed to {seed}.")
     torch.manual_seed(seed)
 
+    logger.info("Reading and Processing Data.")
     dataloader = DataLoader(PasswordDataset(), batch_size=args.batch_size,
-                            num_workers=args.workers, shuffle=True)
+                            num_workers=args.workers, shuffle=True,
+                            pin_memory=True)
 
     device = torch.device("cuda:0") if args.ngpu > 0 else "cpu"
 
+    logger.info("Initializing discriminator.")
     dnet = Discriminator(args.ngpu).to(device)
     dnet.apply(utils.init_weights)
     optimizer = torch.optim.Adam(dnet.parameters(), lr=args.lr)
 
-    scorer = torch.nn.MSELoss()
+    loss_function = torch.nn.BCELoss()
 
     num_batches = len(dataloader)
 
+    logger.info(f"Starting training for {args.epochs} epochs with a batch "
+                f"size of {args.batch_size}")
     for n in range(args.epochs):
         for i, data in enumerate(dataloader, 1):
+            dnet.zero_grad()
             input_ = data["data"].to(device)
             labels = data["label"].to(device, dtype=torch.float)
-            batch_size = labels.size(0)
-            labels = labels.reshape(batch_size, 1, 1, 1)
             output = dnet(input_)
-            dnet_error = scorer(output, labels)
+            dnet_error = loss_function(output, labels)
             dnet_error.backward()
             optimizer.step()
             perc_done = (100*i)//num_batches
             status_bar = '='*perc_done + ' '*(100-perc_done)
-            sys.stdout.write(f"Epoch {n:05d} Batch {i:05d}: [{status_bar}]"
+            sys.stdout.write(f"Epoch {n:04d} - Batch {i:05d}: [{status_bar}]"
                              f"{perc_done:02d}% \r")
             sys.stdout.flush()
-            
 
-
+        logger.info(f"\nAccuracy: {((labels == output.round()).sum()).to(dtype=torch.float)/args.batch_size}")
+        logger.info(f"\nEpoch {n:05d}: Discriminator {loss_function.__class__.__name__} = {dnet_error}")
 
 
 
