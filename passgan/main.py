@@ -15,6 +15,7 @@ import logging
 
 # Third party imports
 import torch
+import sklearn
 from torch.utils.data import DataLoader
 
 # Local application imports
@@ -87,7 +88,8 @@ def main():
                              f"{perc_done:02d}% \r")
             sys.stdout.flush()
 
-        logger.info(f"\nAccuracy: {((labels == output.round()).sum()).to(dtype=torch.float)/args.batch_size}")
+        accuracy = sklearn.metrics.accuracy_score(labels, output)
+        logger.info(f"\nAccuracy: {accuracy}")
         logger.info(f"\nEpoch {n:05d}: Discriminator {loss_function.__class__.__name__} = {dnet_error}")
 
 
