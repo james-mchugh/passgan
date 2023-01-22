@@ -10,7 +10,7 @@ setup(
     url='',
     license='',
     author='James McHugh',
-    author_email='mchugh_james@bah.com',
+    author_email='mchugh.jamec1@gmail.com',
     description='A GAN for generating passwords and detecting strings that '
                 'look like passwords.',
     install_requires=[
